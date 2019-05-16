@@ -82,15 +82,13 @@ def _validate_input_shapes(table, independent_varname, input_shape, offset):
                     input_shape, input_shape_from_table,
                     independent_varname, table))
 
-class PredictInputValidator:
-    def __init__(self, test_table, model_table, id_col, independent_varname,
-                 output_table, pred_type, module_name):
+class EvaluateInputValidator:
+    def __init__(self, test_table, model_table, independent_varname,
+                 output_table, module_name):
         self.test_table = test_table
         self.model_table = model_table
-        self.id_col = id_col
         self.independent_varname = independent_varname
         self.output_table = output_table
-        self.pred_type = pred_type
         if self.model_table:
             self.model_summary_table = add_postfix(
                 self.model_table, "_summary")
@@ -99,14 +97,14 @@ class PredictInputValidator:
 
     def _validate_input_args(self):
         input_tbl_valid(self.model_table, self.module_name)
-        self._validate_model_data_col()
+        self._validate_model_data_cols()
         input_tbl_valid(self.model_summary_table, self.module_name)
         self._validate_summary_tbl_cols()
         input_tbl_valid(self.test_table, self.module_name)
         self._validate_test_tbl_cols()
         output_tbl_valid(self.output_table, self.module_name)
 
-    def _validate_model_data_col(self):
+    def _validate_model_data_cols(self):
         _assert(is_var_valid(self.model_table, MODEL_DATA_COLNAME),
                 "{module_name} error: column '{model_data}' "
                 "does not exist in model table '{table}'.".format(
@@ -129,13 +127,6 @@ class PredictInputValidator:
                     independent_varname=self.independent_varname,
                     table=self.test_table))
 
-        _assert(is_var_valid(self.test_table, self.id_col),
-                "{module_name} error: invalid id column "
-                "('{id_col}') for test table ({table}).".format(
-                    module_name=self.module_name,
-                    id_col=self.id_col,
-                    table=self.test_table))
-
     def _validate_summary_tbl_cols(self):
         cols_to_check_for = [CLASS_VALUES_COLNAME,
                              DEPENDENT_VARNAME_COLNAME,
@@ -149,6 +140,14 @@ class PredictInputValidator:
             "summary table ('{1}'). The expected columns are {2}.".format(
                 self.module_name, self.model_summary_table, cols_to_check_for))
 
+class PredictInputValidator(EvaluateInputValidator):
+    def __init__(self, test_table, model_table, id_col, independent_varname,
+                 output_table, pred_type, module_name):
+        self.id_col = id_col
+        self.pred_type = pred_type
+        EvaluateInputValidator.__init__(self, test_table, model_table, independent_varname,
+                               output_table, module_name)
+
     def validate_pred_type(self, class_values):
         if not self.pred_type in ['prob', 'response']:
             plpy.error("{0}: Invalid value for pred_type param ({1}). Must be "\
@@ -161,6 +160,15 @@ class PredictInputValidator:
     def validate_input_shape(self, input_shape_from_arch):
         _validate_input_shapes(self.test_table, self.independent_varname,
                                input_shape_from_arch, 1)
+
+    def _validate_test_tbl_cols(self):
+        EvaluateInputValidator._validate_test_tbl_cols(self)
+        _assert(is_var_valid(self.test_table, self.id_col),
+                "{module_name} error: invalid id column "
+                "('{id_col}') for test table ({table}).".format(
+                    module_name=self.module_name,
+                    id_col=self.id_col,
+                    table=self.test_table))
 
 class FitInputValidator:
     def __init__(self, source_table, validation_table, output_model_table,

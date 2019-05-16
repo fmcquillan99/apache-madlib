@@ -156,6 +156,19 @@ SELECT assert(
         model_arch IS NOT NULL, 'Keras model output validation failed. Actual:' || __to_char(k))
 FROM (SELECT * FROM keras_saved_out) k;
 
+-- Test that evaluate works as expected:
+DROP TABLE IF EXISTS evaluate_out;
+SELECT madlib_keras_evaluate('keras_saved_out', 'cifar_10_sample_val', 'dependent_var', 'independent_var', 'evaluate_out', 0);
+
+-- Test that passing NULL / None instead of 0 for gpus_per_host works
+DROP TABLE IF EXISTS evaluate_out;
+SELECT madlib_keras_evaluate('keras_saved_out', 'cifar_10_sample_val', 'dependent_var', 'independent_var', 'evaluate_out');
+
+-- Test that we error out correctly if model_arch field missing from fit output
+DROP TABLE IF EXISTS evaluate_out;
+ALTER TABLE keras_saved_out DROP COLUMN model_arch;
+SELECT assert(trap_error($TRAP$SELECT madlib_keras_evaluate('keras_saved_out', 'cifar_10_sample_val', 'dependent_var',
+    'independent_var', 'evaluate_out');$TRAP$) = 1, 'Should error out if model_arch column is missing from model_table');
 
 -- Verify number of iterations for which metrics and loss are computed
 DROP TABLE IF EXISTS keras_saved_out, keras_saved_out_summary;

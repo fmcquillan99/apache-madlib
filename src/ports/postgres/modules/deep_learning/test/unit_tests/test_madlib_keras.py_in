@@ -268,7 +268,7 @@ class MadlibKerasFitTestCase(unittest.TestCase):
                 None, self.dependent_var, self.independent_var , self.model.to_json(),
                 self.compile_params, self.fit_params, 0, self.all_seg_ids,
                 total_images_per_seg, 0, 4, previous_state.tostring(), **k)
-        self.assertIn('0 rows', str(error.exception))
+        self.assertIn('Total images is 0', str(error.exception))
 
     def test_fit_transition_too_many_images(self):
         self.subject.K.set_session = Mock()
@@ -1292,6 +1292,7 @@ class MadlibKerasEvaluationTestCase(unittest.TestCase):
         input_state = [image_count*self.loss, image_count*self.accuracy, image_count]
 
         output_state = self.subject.internal_keras_eval_final(input_state)
+        self.assertEqual(len(output_state), 2)
         agg_loss = output_state[0]
         agg_accuracy = output_state[1]
 
